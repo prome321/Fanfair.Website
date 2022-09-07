@@ -1,171 +1,41 @@
 <?php
-$error='';
-
-
-
   
- include 'config.php';
- use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
-use PHPMailer\PHPMailer\Exception;
-                      //Load Composer's autoloader
-require 'vendor/autoload.php';
+    include 'config.php';
+    $msg = "";
 
-function clean_text($string)
-{
-    $string=trim($string);
-    $string=stripcslashes($string);
-    $string=htmlspecialchars($string);
-    return $string;
-
-
-}
-
-if(isset($_POST['submit']))
-{
-  if(empty($_POST["name"]))
-    {
-         $error = "<div class='alert alert-danger'>{$name} - Please Enter Your Name.</div>";
-
-    }
-    else
-    {
-        $name=clean_text($_POST["name"]);
-        if(!preg_match("/^[a-zA-Z]*$/",$name))
-        {
-                 $error = "<div class='alert alert-danger'> Please Enter Your Name.</div>";
+    if (isset($_GET['verification'])) {
+        if (mysqli_num_rows(mysqli_query($conn, "SELECT * FROM usering WHERE code='{$_GET['verification']}'")) > 0) {
+            $query = mysqli_query($conn, "UPDATE usering SET code='' WHERE code='{$_GET['verification']}'");
+            
+            if ($query) {
+                $msg = "<div class='alert alert-success'>Account verification has been successfully completed.</div>";
+            }
+        } else {
+            header("Location: signin.php");
         }
-
-    }
-    
-     if(empty($_POST["email"]))
-    {
-        $error .='<p><label class="text-danger">Please Enter Email No.</label></p>';
-
-    }
-    else
-    {
-        $email=clean_text($_POST["email"]);
-        if(!filter_var($email,FILTER_VALIDATE_EMAIL))
-        {
-                $error .='<p><label class="text-danger">Invalid Email Format</label></p>';
-        }
-
-    }
-       if(empty($_POST["password"]))
-    {
-        $error = "<div class='alert alert-danger'> Please Enter Your Email.</div>";
-
-    }
-    else
-    {
-        $password=clean_text($_POST["password"]);
-        if(!filter_var($password, 
-  FILTER_VALIDATE_REGEXP,
-  array( "options"=> array( "regexp" => "/.{6,25}/"))))
-        {
-              $error = "<div class='alert alert-danger'>Invalid Password</div>";
-
-
     }
 
-
-    
-    
-
-}
-if($error=='')
-{
-
-
-
-       $name = mysqli_real_escape_string($conn, $_POST['name']);
+    if (isset($_POST['submit'])) {
         $email = mysqli_real_escape_string($conn, $_POST['email']);
         $password = mysqli_real_escape_string($conn, md5($_POST['password']));
-        $confirm_password = mysqli_real_escape_string($conn, md5($_POST['confirm-password']));
-        $code = mysqli_real_escape_string($conn, md5(rand()));
 
-        if (mysqli_num_rows(mysqli_query($conn, "SELECT * FROM signinuser WHERE email='{$email}'")) > 0) {
-            $error = "<div class='alert alert-danger'>{$email} - This email address has been already exists.</div>";
-        } else {
-            if ($password === $confirm_password) {
-                $sql = "INSERT INTO signinuser (name, email, password, code) VALUES ('{$name}', '{$email}', '{$password}', '{$code}')";
-                $result = mysqli_query($conn, $sql);
+        $sql = "SELECT * FROM usering WHERE email='{$email}' AND password='{$password}'";
+        $result = mysqli_query($conn, $sql);
 
-                if ($result) {
-                    echo "<div style='display: none;'>";
-                    //Create an instance; passing `true` enables exceptions
-                    $mail = new PHPMailer(true);
+        if (mysqli_num_rows($result) === 1) {
+            $row = mysqli_fetch_assoc($result);
 
-                    try {
-                        //Server settings
-                        $mail->SMTPDebug = SMTP::DEBUG_SERVER;                      //Enable verbose debug output
-                        $mail->isSMTP();                                            //Send using SMTP
-                        $mail->Host       = 'smtp.gmail.com';                     //Set the SMTP server to send through
-                        $mail->SMTPAuth   = true;                                   //Enable SMTP authentication
-                        $mail->Username   = 'fanfair7890@gmail.com';                     //SMTP username
-                        $mail->Password   = 'kjnuxzofnrxxfxss';                               //SMTP password
-                        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;            //Enable implicit TLS encryption
-                        $mail->Port       = 465;                                    //TCP port to connect to; use 587 if you have set `SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS`
-
-                        //Recipients
-                        $mail->setFrom('fanfair7890@gmail.com');
-                        $mail->addAddress($email);
-
-                        //Content
-                        $mail->isHTML(true);                                  //Set email format to HTML
-                        $mail->Subject = 'Welcome to fanfair';
-                        $mail->Body    = 'Thank you for registering into FANFAIR.<b><a href="http://localhost/FINALSD/mainusersignin.php?verification='.$code.'">CLICK HERE</a></b>';
-                         $error = "<div class='alert alert-info'>We've send a verification link on your email address.</div>";
-                        $mail->send();
-
-                        echo 'Message has been sent';
-                    } catch (Exception $e) {
-                        echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
-                    }
-                    echo "</div>";
-                   
-                } else {
-                    $error = "<div class='alert alert-danger'>Something wrong went.</div>";
-                }
+            if (empty($row['code'])) {
+                $_SESSION['SESSION_EMAIL'] = $email;
+                header("Location: form.php");
             } else {
-                $error = "<div class='alert alert-danger'>Password and Confirm Password do not match</div>";
+                $msg = "<div class='alert alert-info'>First verify your account and try again.</div>";
             }
+        } else {
+            $msg = "<div class='alert alert-danger'>Email or password do not match.</div>";
         }
-
-               
-                 
-
-                
-                 } 
-
-
-
-                   
-
-
-
-
-    
-
-
-
-
-
     }
-
-
-
-
-
-
-
-
 ?>
-
-
-
-
 
 
 
@@ -174,11 +44,11 @@ if($error=='')
 
 <head>
     <meta charset="utf-8">
-    <title>SIGNUP</title>
+    <title>Admin LOGIN</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta content="" name="keywords">
     <meta content="" name="description">
-    <link rel="stylesheet" type="text/css" href="signin.css">
+
     <!-- Favicon -->
     <link href="img/favicon.ico" rel="icon">
 
@@ -213,61 +83,40 @@ if($error=='')
         <!-- Spinner End -->
 
 
-        <!-- Sign Up Start -->
+        <!-- Sign In Start -->
         <div class="container-fluid">
             <div class="row h-100 align-items-center justify-content-center" style="min-height: 100vh;">
                 <div class="col-12 col-sm-8 col-md-6 col-lg-5 col-xl-4">
                     <div class="bg-secondary rounded p-4 p-sm-5 my-4 mx-3">
                         <div class="d-flex align-items-center justify-content-between mb-3">
-                            <a href="index.html" class="">
-                                <h3 class="text-primary"><i class="fa fa-user-edit me-2"> FANFAIR</i></h3>
+                            <a href="" class="">
+                                <h3 class="text-primary"><i style="margin-right:2px;" class="bi bi-box-arrow-in-right"> </i> FANFAIR</h3>
                             </a>
-                            <h3>Register Now</h3>
-                           
+                            <h3>Sign In</h3>
                         </div>
-                   
-                       
-                             
-                        <form method="post" >
-                        <?php echo $error; ?>
-                      
-                         <div class="form-floating mb-3">
-                              
-                            <input  type="text" class="form-control" id="floatingInput" placeholder="name" name="name" value="<?php if (isset($_POST['submit'])) { echo $name; } ?>" required >
-                      
-                            <label for="floatingInput">Your Name</label>
-                        </div>
+                      <?php echo $msg; ?>
+                        <form action="" method="post">
                         <div class="form-floating mb-3">
-                             
-                            <input name="email" type="email" class="form-control" placeholder="name@example.com" value="<?php if (isset($_POST['submit'])) { echo $email; } ?>" required >
-                            
+                            <input type="email" name="email" class="form-control" id="floatingInput" placeholder="name@example.com"required>
                             <label for="floatingInput">Email address</label>
-                       
                         </div>
                         <div class="form-floating mb-4">
-                               
-                            <input name="password" type="password" class="form-control" id="floatingPassword" placeholder="Password"  >
-                         
+                            <input type="password" class="form-control" name="password" id="floatingPassword" placeholder="Password"required>
                             <label for="floatingPassword">Password</label>
-                      
                         </div>
-                         <div class="form-floating mb-4">
-                              
-                            <input name="confirm-password" type="password" class="form-control" id="floatingPassword" placeholder="Password" >
-                           
-                            <label for="floatingPassword">Confirm Password</label>
-                        
+                        <div class="d-flex align-items-center justify-content-between mb-4">
+                          
+                            <a href="forget.php">Forgot Password?</a>
                         </div>
-                     
-                        <button name="submit" value="submit" type="submit"  class="btn btn-primary py-3 w-100 mb-4" style="background-color: #C3073F">Sign Up</button>
-                        <p class="text-center mb-0">Already have an Account? <a href="mainusersignin.php" >Sign In</a></p>
-                    </form>
+                        <button name="submit" type="submit" class="btn btn-primary py-3 w-100 mb-4" style="    background-color: #C3073F;">Sign In</button>
+                        <p class="text-center mb-0">Don't have an Account? <a href="signup.php">Sign Up</a></p>
 
+                        </form>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- Sign Up End -->
+        <!-- Sign In End -->
     </div>
 
     <!-- JavaScript Libraries -->
@@ -283,15 +132,6 @@ if($error=='')
 
     <!-- Template Javascript -->
     <script src="js/main.js"></script>
-      <script>
-        $(document).ready(function (c) {
-            $('.alert-close').on('click', function (c) {
-                $('.main-mockup').fadeOut('slow', function (c) {
-                    $('.main-mockup').remove();
-                });
-            });
-        });
-    </script>
 </body>
 
 </html>
